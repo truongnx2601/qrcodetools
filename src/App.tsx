@@ -4,10 +4,17 @@ import { QRCodeCanvas } from "qrcode.react";
 import "./App.css";
 
 const PREVIEW_SIZE = 280;
-const EXPORT_SIZE = 2048;
+
+const DEFAULT_EXPORT_SIZE = 2048;
+const PRESET_SIZES = [512, 1024, 2048, 4096];
+
+const MIN_EXPORT_SIZE = 256;
+const MAX_EXPORT_SIZE = 4096;
+
 const DEFAULT_LOGO_PERCENT = 20;
 const MIN_LOGO_PERCENT = 10;
 const MAX_LOGO_PERCENT = 25;
+
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 function normalizeUrl(input: string): string | null {
@@ -39,11 +46,15 @@ function normalizeUrl(input: string): string | null {
 }
 
 function App() {
-  const [urlInput, setUrlInput] = useState("https://example.com");
+  const [urlInput, setUrlInput] = useState("");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [logoName, setLogoName] = useState("");
   const [logoPercent, setLogoPercent] = useState(
     DEFAULT_LOGO_PERCENT
+  );
+  const [exportSize, setExportSize] = useState(DEFAULT_EXPORT_SIZE);
+  const [customSize, setCustomSize] = useState(
+    String(DEFAULT_EXPORT_SIZE)
   );
   const [error, setError] = useState("");
   const [isDownloading, setIsDownloading] = useState(false);
@@ -147,7 +158,7 @@ function App() {
       const anchor = document.createElement("a");
 
       anchor.href = downloadUrl;
-      anchor.download = "qrcode-2048.png";
+      anchor.download = `qrcode-${exportSize}.png`;
 
       document.body.appendChild(anchor);
       anchor.click();
@@ -163,7 +174,7 @@ function App() {
   }
 
   const previewLogoSize = PREVIEW_SIZE * (logoPercent / 100);
-  const exportLogoSize = EXPORT_SIZE * (logoPercent / 100);
+  const exportLogoSize = exportSize * (logoPercent / 100);
 
   return (
     <main className="app-shell">
@@ -314,6 +325,79 @@ function App() {
             <span>Nhỏ hơn · 10%</span>
             <span>Lớn hơn · 25%</span>
           </div>
+          
+          <div className="section-divider" />
+
+          <div className="section-heading">
+            <span className="step-number">03</span>
+            <div>
+              <h2>Kích thước QR Code</h2>
+              <p>Chọn độ phân giải PNG khi tải xuống.</p>
+            </div>
+          </div>
+
+          <div className="size-options">
+            {PRESET_SIZES.map((size) => (
+              <button
+                key={size}
+                type="button"
+                className={`size-option ${
+                  exportSize === size ? "active" : ""
+                }`}
+                onClick={() => {
+                  setExportSize(size);
+                  setCustomSize(String(size));
+                }}
+              >
+                <span>{size} × {size}</span>
+                {exportSize === size && <span>✓</span>}
+              </button>
+            ))}
+          </div>
+
+          <label className="field-label" htmlFor="custom-size">
+            Kích thước tùy chỉnh (256–4096 px)
+          </label>
+
+          <div className="custom-size-field">
+            <input
+              id="custom-size"
+              type="number"
+              min={MIN_EXPORT_SIZE}
+              max={MAX_EXPORT_SIZE}
+              step={1}
+              value={customSize}
+              onChange={(event) => {
+                const value = event.target.value;
+                setCustomSize(value);
+
+                if (value.trim() === "") return;
+
+                const size = Number(value);
+
+                if (
+                  Number.isInteger(size) &&
+                  size >= MIN_EXPORT_SIZE &&
+                  size <= MAX_EXPORT_SIZE
+                ) {
+                  setExportSize(size);
+                }
+              }}
+              onBlur={() => {
+                const size = Number(customSize);
+
+                if (
+                  customSize.trim() === "" ||
+                  !Number.isInteger(size) ||
+                  size < MIN_EXPORT_SIZE ||
+                  size > MAX_EXPORT_SIZE
+                ) {
+                  setCustomSize(String(exportSize));
+                }
+              }}
+            />
+            <span>px × px</span>
+          </div>
 
           <div className="settings-summary">
             <div>
@@ -329,7 +413,7 @@ function App() {
             <div>
               <span className="settings-dot" />
               <span>Xuất ảnh</span>
-              <strong>2048 px</strong>
+              <strong>{exportSize} px</strong>
             </div>
           </div>
 
@@ -348,7 +432,7 @@ function App() {
             <span>{isDownloading ? "Đang tạo PNG..." : "↓"}</span>
             {isDownloading
               ? "Đang xuất ảnh..."
-              : "Tải xuống PNG · 2048 × 2048"}
+              : `Tải xuống PNG · ${exportSize} × ${exportSize}`}
           </button>
 
           <p className="privacy-note">
@@ -407,7 +491,7 @@ function App() {
           <div className="preview-stats">
             <div>
               <span>KÍCH THƯỚC XUẤT</span>
-              <strong>2048 × 2048 px</strong>
+              <strong>{exportSize} × {exportSize} px</strong>
             </div>
             <div>
               <span>LOGO</span>
@@ -441,7 +525,7 @@ function App() {
         {isUrlValid && (
           <QRCodeCanvas
             value={normalizedUrl}
-            size={EXPORT_SIZE}
+            size={exportSize}
             level="H"
             marginSize={4}
             bgColor="#FFFFFF"
